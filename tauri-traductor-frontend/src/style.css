@@ -1,0 +1,34 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+  color: #fff;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: medium;
+  letter-spacing: 0.8px;
+  text-align: center;
+}
+
+.input-text-area,
+.output-text-area {
+  margin: 0 auto;
+  width: 80%;
+  height: 250px;
+  border-radius: 5px;
+  background-color: rgb(53, 53, 53);
+  margin-bottom: 25px;
+}
+
+.container textarea {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box; /* clave para que no se desborde */
+  resize: none; /* opcional: evita que el usuario lo redimensione */
+  background: inherit;
+  outline: none;
+  border: none;
+  border-radius: 5px;
+  color: #fff;
+  padding: 12px;
+}
