@@ -447,6 +447,129 @@ Idioma de los ejemplos y citas: {request.target_lang}
         return {"success": False, "error": str(e)}
 
 
+# [ADDED v1.0] Importar y registrar routers nuevos — no modifica rutas existentes
+from routers import auth, vocabulary, exercises, metrics
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(vocabulary.router, prefix="/vocabulary", tags=["vocabulary"])
+app.include_router(exercises.router, prefix="/exercises", tags=["exercises"])
+app.include_router(metrics.router, prefix="/metrics", tags=["metrics"])
+
+# [ADDED v2.0] Endpoint de traducción con tracking para usuarios anónimos y autenticados
+from fastapi import Request, Header
+from sqlalchemy.orm import Session
+from db.database import SessionLocal
+from db.models import User, Translation, Session as SessionModel
+from middleware.auth_middleware import get_current_user
+
+@app.post("/translate/tracked")
+async def translate_tracked(
+    request: TranslationRequest,
+    req: Request,
+    authorization: str = Header(None)
+):
+    user = get_current_user(req, authorization)
+
+    # Validar límite para anónimos
+    if user.is_anonymous and user.id:
+        if user.daily_translations >= 20:
+            return {
+                "success": False,
+                "error": "limit_reached",
+                "message": "Alcanzaste el límite de 20 traducciones diarias. Registrate para continuar."
+            }
+
+    # Reutilizar la lógica de traducción existente llamando al endpoint internamente
+    from fastapi.testclient import TestClient
+    # Alternativa: reimplementar la lógica principal usando funciones auxiliares existentes
+    start = time.time()
+
+    grammar_result = await check_grammar(request.text)
+    if grammar_result != "ok" and isinstance(grammar_result, dict):
+        suggestions = grammar_result.get("suggestions", [])
+        suggestions = [
+            s for s in suggestions
+            if isinstance(s, str) and len(s.strip()) > 3 and s.strip().lower() not in ("ok", "okay")
+        ]
+        if suggestions:
+            elapsed = time.time() - start
+            return {
+                "success": False,
+                "error": grammar_result.get("error", "El texto tiene errores. Seleccioná una sugerencia."),
+                "suggestions": suggestions,
+                "elapsed": f"{elapsed:.2f}s"
+            }
+
+    src_lang = request.source_lang
+    if src_lang == "auto":
+        src_lang = detect_language(request.text)
+
+    src_lang = src_lang.lower().replace('_', '-')
+    tgt_lang = request.target_lang.lower().replace('_', '-')
+
+    if src_lang == 'zh':
+        src_lang = 'zh-CN'
+    if tgt_lang == 'zh':
+        tgt_lang = 'zh-CN'
+
+    if src_lang not in SUPPORTED_LANGS:
+        return {"success": False, "error": f"Idioma origen no soportado: {src_lang}"}
+    if tgt_lang not in SUPPORTED_LANGS:
+        return {"success": False, "error": f"Idioma destino no soportado: {tgt_lang}"}
+
+    if src_lang == tgt_lang:
+        elapsed = time.time() - start
+        try:
+            audio_base64 = await speakText(request.text, tgt_lang)
+        except Exception as audio_err:
+            audio_base64 = None
+        translated_text = request.text
+    else:
+        translated_text = await translate_text(request.text, src_lang, tgt_lang)
+        try:
+            audio_base64 = await speakText(translated_text, tgt_lang)
+        except Exception as audio_err:
+            audio_base64 = None
+        elapsed = time.time() - start
+
+    # Guardar traducción en base de datos si hay usuario identificado
+    db = SessionLocal()
+    try:
+        if user.id:
+            session_record = None
+            if not user.is_anonymous and authorization:
+                token = authorization[7:] if authorization.lower().startswith("bearer ") else authorization
+                session_record = db.query(SessionModel).filter(
+                    SessionModel.token == token,
+                    SessionModel.is_active == True
+                ).first()
+
+            trans = Translation(
+                user_id=user.id if not user.is_anonymous else None,
+                session_id=session_record.id if session_record else None,
+                original_text=request.text,
+                translated_text=translated_text,
+                source_lang=src_lang,
+                target_lang=tgt_lang
+            )
+            db.add(trans)
+
+            if user.is_anonymous:
+                user.daily_translations += 1
+                db.add(user)
+
+            db.commit()
+    finally:
+        db.close()
+
+    return {
+        "success": True,
+        "translated": translated_text,
+        "source_lang": src_lang,
+        "target_lang": tgt_lang,
+        "elapsed": f"{elapsed:.2f}s",
+        "audio": audio_base64
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

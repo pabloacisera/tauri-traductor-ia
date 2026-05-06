@@ -1,7 +1,14 @@
 import { addListener } from './core/listenerManager.js';
 import './core/analyze.js';
 import './style.css';
+import './style_additions.css';
 import { setupTextareaForceEnd } from './utils/textareaAlignCursor.js';
+
+// [ADDED v1.0] Importar módulos nuevos — no modifica el traductor existente
+import './core/auth.js';
+import './core/vocabulary.js';
+import './core/practice.js';
+import './core/metrics.js';
 
 document.querySelector('#app').innerHTML = `
 <section id="center">
@@ -19,7 +26,7 @@ document.querySelector('#app').innerHTML = `
       <option value="ja">Japonés</option>
     </select>
   </div>
-  
+
   <div class="translator-layout">
     <!-- Columna izquierda: Input -->
     <div class="input-column">
@@ -45,7 +52,7 @@ document.querySelector('#app').innerHTML = `
       </div>
     </div>
   </div>
-</section>  
+</section>
 `;
 
 // IMPORTANTE: Primero se crea el HTML, luego se activa el JS
