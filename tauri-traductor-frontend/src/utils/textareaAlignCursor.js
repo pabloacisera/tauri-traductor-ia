@@ -1,6 +1,6 @@
 export const setupTextareaForceEnd = () => {
   // Buscamos el textarea directamente por su clase
-  const textarea = document.querySelector('.input-text-area');
+  const textarea = document.querySelector('.js-input-target');
 
   if (textarea) {
     // Forzar posición al hacer click

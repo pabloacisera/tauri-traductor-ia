@@ -1,0 +1,5 @@
+{
+    "basedpyright.importStrategy": "useBundled",
+    "basedpyright.analysis.typeCheckingMode": "basic",
+    "basedpyright.analysis.diagnosticMode": "workspace"
+}
