@@ -322,6 +322,7 @@ async function loadVocabularyPanel() {
     const data = await res.json();
     const words = data.words || [];
     if (words.length === 0) {
+      ctx_showEmptyVocabGuide();
       content.innerHTML = '<div class="practice-empty-state">No tenés palabras guardadas todavía. Guardá palabras desde el análisis lingüístico.</div>';
       return;
     }
@@ -361,3 +362,22 @@ window.addEventListener('contextia:vocabularysaved', checkVisibility);
 
 // Verificar visibilidad al cargar
 checkVisibility();
+
+// ─── Fix 2: Guía de vocabulario vacío ───
+function ctx_showEmptyVocabGuide() {
+    const guideHtml = `
+        <div class="auth-modal-overlay" id="guide-modal">
+            <div class="auth-modal">
+                <button class="auth-close" onclick="document.getElementById('guide-modal').remove()">&times;</button>
+                <h2>¡Empezá a practicar!</h2>
+                <p style="margin-bottom: 15px; color: var(--text-secondary);">Para generar ejercicios primero necesitás palabras en tu vocabulario:</p>
+                <ol style="color: var(--text-primary); padding-left: 20px; line-height: 1.6;">
+                    <li>Traducí cualquier frase.</li>
+                    <li>Hacé click en <b>"Análisis Lingüístico"</b>.</li>
+                    <li>Marcá el icono de <b>Bookmark (marcador)</b> en las palabras que quieras aprender.</li>
+                </ol>
+                <button class="auth-submit" style="margin-top:20px" onclick="document.getElementById('guide-modal').remove()">Entendido</button>
+            </div>
+        </div>`;
+    document.body.insertAdjacentHTML('beforeend', guideHtml);
+}

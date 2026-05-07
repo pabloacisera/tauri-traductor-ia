@@ -731,4 +731,41 @@
   background: rgba(245, 158, 11, 0.05);
 }
 
+/* ─── Fix 1: Corrección de altura del panel para evitar solapamiento con la barra ─── */
+.practice-panel {
+    bottom: 72px !important;
+    height: calc(100% - 72px) !important;
+    transform: translateY(100%);
+}
+.practice-panel.open {
+    transform: translateY(0);
+}
+
+/* ─── Fix 3: Simetría estética de columnas ─── */
+.translator-layout {
+    display: grid !important;
+    align-items: stretch !important;
+}
+.input-column, .output-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+.output-column {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+}
+
+/* ─── Fix 4: Centrado del icono Play ─── */
+.speech-voice-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+}
+.speech-voice-icon svg {
+    margin: 0 !important;
+    display: block;
+}
+
 
