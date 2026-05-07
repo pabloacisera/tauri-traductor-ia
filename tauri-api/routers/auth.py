@@ -13,6 +13,7 @@ from middleware.auth_middleware import (
     get_current_user,
     require_auth
 )
+from middleware.usage import get_user_plan, count_today_translations, LIMITS
 
 router = APIRouter()
 
@@ -99,11 +100,26 @@ def logout(user: User = Depends(require_auth), db: Session = Depends(get_db)):
 # [ADDED v2.0] Perfil del usuario autenticado
 @router.get("/me")
 def me(user: User = Depends(require_auth), db: Session = Depends(get_db)):
+    from db.new_models import Subscription
+
     progress = db.query(UserProgress).filter(UserProgress.user_id == user.id).first()
+    plan = get_user_plan(user, db)
+    sub = db.query(Subscription).filter(
+        Subscription.user_id == user.id,
+        Subscription.status == "active"
+    ).first()
+    limit = LIMITS.get(plan, 15)
+    used_today = count_today_translations(user.id, db)
+
     return {
         "user_id": user.id,
         "email": user.email,
         "is_anonymous": user.is_anonymous,
-        "daily_translations": user.daily_translations,
-        "current_level": progress.current_level if progress else "A1"
+        "daily_translations": used_today,
+        "current_level": progress.current_level if progress else "A1",
+        # [ADDED MVP-v1]
+        "plan": plan,
+        "translations_limit": limit,
+        "translations_remaining": -1 if limit == -1 else max(0, limit - used_today),
+        "subscription_end": sub.current_period_end.isoformat() if sub and sub.current_period_end else None
     }

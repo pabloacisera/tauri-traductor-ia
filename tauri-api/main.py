@@ -468,16 +468,19 @@ async def translate_tracked(
     req: Request,
     authorization: str = Header(None)
 ):
-    user = get_current_user(req, authorization)
+    from middleware.usage import check_translation_limit, log_translation
+    from db.new_models import TranslationHistory
+    import json as _json
 
-    # Validar límite para anónimos
-    if user.is_anonymous and user.id:
-        if user.daily_translations >= 20:
-            return {
-                "success": False,
-                "error": "limit_reached",
-                "message": "Alcanzaste el límite de 20 traducciones diarias. Registrate para continuar."
-            }
+    user = get_current_user(req, authorization)
+    db = SessionLocal()
+
+    try:
+        # [MVP-v1] Verificar límite usando nuevo middleware
+        limit_check = check_translation_limit(user, db)
+    except Exception as limit_err:
+        db.close()
+        raise limit_err
 
     start = time.time()
 
@@ -489,10 +492,11 @@ async def translate_tracked(
             if isinstance(s, str) and len(s.strip()) > 3 and s.strip().lower() not in ("ok", "okay")
         ]
         if suggestions:
+            db.close()
             elapsed = time.time() - start
             return {
                 "success": False,
-                "error": grammar_result.get("error", "El texto tiene errores. Seleccioná una sugerencia."),
+                "error": grammar_result.get("error", "El texto tiene errores."),
                 "suggestions": suggestions,
                 "elapsed": f"{elapsed:.2f}s"
             }
@@ -504,64 +508,65 @@ async def translate_tracked(
     src_lang = src_lang.lower().replace('_', '-')
     tgt_lang = request.target_lang.lower().replace('_', '-')
 
-    if src_lang == 'zh':
-        src_lang = 'zh-CN'
-    if tgt_lang == 'zh':
-        tgt_lang = 'zh-CN'
+    if src_lang == 'zh': src_lang = 'zh-CN'
+    if tgt_lang == 'zh': tgt_lang = 'zh-CN'
 
     if src_lang not in SUPPORTED_LANGS:
+        db.close()
         return {"success": False, "error": f"Idioma origen no soportado: {src_lang}"}
     if tgt_lang not in SUPPORTED_LANGS:
+        db.close()
         return {"success": False, "error": f"Idioma destino no soportado: {tgt_lang}"}
 
     if src_lang == tgt_lang:
-        elapsed = time.time() - start
-        try:
-            audio_base64 = await speakText(request.text, tgt_lang)
-        except Exception as audio_err:
-            audio_base64 = None
         translated_text = request.text
     else:
         translated_text = await translate_text(request.text, src_lang, tgt_lang)
-        try:
-            audio_base64 = await speakText(translated_text, tgt_lang)
-        except Exception as audio_err:
-            audio_base64 = None
-        elapsed = time.time() - start
 
-    # Guardar traducción en base de datos si hay usuario identificado
-    db = SessionLocal()
     try:
-        if user.id:
-            session_record = None
-            if not user.is_anonymous and authorization:
-                token = authorization[7:] if authorization.lower().startswith("bearer ") else authorization
-                session_record = db.query(SessionModel).filter(
-                    SessionModel.token == token,
-                    SessionModel.is_active == True
-                ).first()
+        audio_base64 = await speakText(translated_text, tgt_lang)
+    except Exception:
+        audio_base64 = None
 
-            trans = Translation(
-                user_id=user.id if not user.is_anonymous else None,
-                session_id=session_record.id if session_record else None,
+    elapsed = time.time() - start
+
+    # [MVP-v1] Guardar en historial si usuario registrado, con análisis asíncrono
+    history_id = None
+    if user and user.id and not user.is_anonymous:
+        try:
+            # Guardar historial primero sin análisis (análisis se agrega después si lo pide)
+            hist = TranslationHistory(
+                user_id=user.id,
                 original_text=request.text,
                 translated_text=translated_text,
-                source_lang=src_lang,
-                target_lang=tgt_lang
+                source_language=src_lang,
+                target_language=tgt_lang,
+                audio_base64=audio_base64,
+                analysis=None  # Se genera on-demand desde /history/{id}/analyze
             )
-            db.add(trans)
-
-            if user.is_anonymous:
-                user.daily_translations += 1
-                db.add(user)
-
+            db.add(hist)
             db.commit()
+            history_id = hist.id
+        except Exception as he:
+            print(f"⚠️ Error guardando historial: {he}")
 
-            remaining = None
-            if user.is_anonymous and user.id:
-                remaining = max(0, 20 - user.daily_translations)
-    finally:
-        db.close()
+    # [MVP-v1] Registrar en usage_logs
+    if user and user.id:
+        try:
+            log_translation(user.id, db, metadata=_json.dumps({"src": src_lang, "tgt": tgt_lang}))
+        except Exception:
+            pass
+
+    # [MVP-v1] Mantener compatibilidad con campo legacy daily_translations
+    if user and user.is_anonymous and user.id:
+        try:
+            user.daily_translations = (user.daily_translations or 0) + 1
+            db.add(user)
+            db.commit()
+        except Exception:
+            pass
+
+    db.close()
 
     return {
         "success": True,
@@ -570,8 +575,22 @@ async def translate_tracked(
         "target_lang": tgt_lang,
         "elapsed": f"{elapsed:.2f}s",
         "audio": audio_base64,
-        "translations_remaining": remaining
+        "translations_remaining": limit_check["remaining"],
+        "plan": limit_check["plan"],
+        "history_id": history_id
     }
+
+# [ADDED MVP-v1] Crear tablas nuevas al iniciar (no toca las existentes)
+from db.new_models import Subscription, UsageLog, TranslationHistory
+from db.database import engine as _engine
+Subscription.__table__.create(bind=_engine, checkfirst=True)
+UsageLog.__table__.create(bind=_engine, checkfirst=True)
+TranslationHistory.__table__.create(bind=_engine, checkfirst=True)
+
+# [ADDED MVP-v1] Registrar nuevos routers MVP
+from routers import subscription, history as history_router
+app.include_router(subscription.router, prefix="/subscription", tags=["subscription"])
+app.include_router(history_router.router, prefix="/history", tags=["history"])
 
 if __name__ == "__main__":
     import uvicorn

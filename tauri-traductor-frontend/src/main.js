@@ -71,34 +71,48 @@ function renderSessionHeader() {
   if (token) {
     const email = localStorage.getItem('contextia_user_email') || 'Usuario';
     const initial = email.charAt(0).toUpperCase();
+    const plan = localStorage.getItem('contextia_plan') || 'free';
+    const isPro = plan !== 'free' && plan !== 'anonymous';
+
     container.innerHTML = `
-      <div class="header-user">
-        <div class="header-avatar">${initial}</div>
-        <span class="header-email">${email}</span>
-        <button class="header-logout-btn" id="header-logout">Salir</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${!isPro ? '<button class="upgrade-pro-btn" id="header-upgrade-btn">Pro</button>' : ''}
+        <button class="profile-btn" id="header-profile-btn" title="${email}">
+          ${initial}
+          <span class="plan-badge-dot ${isPro ? 'pro' : ''}"></span>
+        </button>
       </div>
     `;
-    document.getElementById('header-logout').onclick = async () => {
-      try {
-        await fetch('http://localhost:8000/auth/logout', {
-          method: 'POST',
-          headers: window.contextiaAuth.authHeaders()
-        });
-      } catch(e) {}
-      localStorage.removeItem('contextia_token');
-      localStorage.removeItem('contextia_user_id');
-      localStorage.removeItem('contextia_user_email');
-      window.dispatchEvent(new Event('contextia:authchange'));
-    };
+
+    const profileBtn = document.getElementById('header-profile-btn');
+    if (profileBtn) profileBtn.onclick = () => window.openAccountModal();
+
+    const upgradeBtn = document.getElementById('header-upgrade-btn');
+    if (upgradeBtn) upgradeBtn.onclick = () => window.openPricingModal();
   } else {
     container.innerHTML = `
       <button class="header-login-btn" id="header-login">Iniciar sesión</button>
     `;
-    document.getElementById('header-login').onclick = () => {
-      window.openAuthModal(null, 'Accedé a tu cuenta');
-    };
+    const loginBtn = document.getElementById('header-login');
+    if (loginBtn) {
+      loginBtn.onclick = () => window.openAuthModal(null, 'Accedé a tu cuenta');
+    }
   }
 }
 
 renderSessionHeader();
 window.addEventListener('contextia:authchange', renderSessionHeader);
+
+// [ADDED MVP-v1] Cargar módulos MVP dinámicamente para no romper el core si fallan
+(async function loadMvpModules() {
+  try {
+    await import('./core/history.js');
+  } catch (e) {
+    console.warn('[MVP] history.js no cargó:', e);
+  }
+  try {
+    await import('./core/account.js');
+  } catch (e) {
+    console.warn('[MVP] account.js no cargó:', e);
+  }
+})();

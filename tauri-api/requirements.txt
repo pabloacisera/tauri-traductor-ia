@@ -79,3 +79,8 @@ uuid_utils==0.14.1
 uvicorn==0.46.0
 xxhash==3.7.0
 zstandard==0.25.0
+
+# [ADDED MVP-v1] Dependencias de autenticación y ORM (ya instaladas, agregadas por completitud)
+python-jose[cryptography]
+bcrypt
+sqlalchemy
