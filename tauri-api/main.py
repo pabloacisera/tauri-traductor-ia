@@ -4,6 +4,7 @@ from gtts import gTTS
 import base64
 import time
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -15,7 +16,13 @@ from groq import Groq
 
 load_dotenv()
 
-app = FastAPI(title="Traductor Async Real")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("🚀 Servidor async REAL iniciado")
+    print("📝 Usando deep-translator con async real")
+    yield
+
+app = FastAPI(title="Traductor Async Real", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=[
                    "*"], allow_methods=["*"], allow_headers=["*"])
 
@@ -218,12 +225,6 @@ async def speakText(text, target_lang):
     except Exception as e:
         print(f"Error generating speech: {e}")
         return None
-
-
-@app.on_event("startup")
-async def startup_event():
-    print("🚀 Servidor async REAL iniciado")
-    print("📝 Usando deep-translator con async real")
 
 
 @app.get("/health")
@@ -444,7 +445,7 @@ Idioma de los ejemplos y citas: {request.target_lang}
         return {"success": True, "analysis": analysis}
     except Exception as e:
         print(f"Error in /analyze: {e}")
-        return {"success": False, "error": str(e)}
+        return {"success": False, "error": "No se pudo procesar el análisis lingüístico. Por favor, intentá de nuevo."}
 
 
 # [ADDED v1.0] Importar y registrar routers nuevos — no modifica rutas existentes
@@ -478,9 +479,6 @@ async def translate_tracked(
                 "message": "Alcanzaste el límite de 20 traducciones diarias. Registrate para continuar."
             }
 
-    # Reutilizar la lógica de traducción existente llamando al endpoint internamente
-    from fastapi.testclient import TestClient
-    # Alternativa: reimplementar la lógica principal usando funciones auxiliares existentes
     start = time.time()
 
     grammar_result = await check_grammar(request.text)
@@ -558,6 +556,10 @@ async def translate_tracked(
                 db.add(user)
 
             db.commit()
+
+            remaining = None
+            if user.is_anonymous and user.id:
+                remaining = max(0, 20 - user.daily_translations)
     finally:
         db.close()
 
@@ -567,7 +569,8 @@ async def translate_tracked(
         "source_lang": src_lang,
         "target_lang": tgt_lang,
         "elapsed": f"{elapsed:.2f}s",
-        "audio": audio_base64
+        "audio": audio_base64,
+        "translations_remaining": remaining
     }
 
 if __name__ == "__main__":

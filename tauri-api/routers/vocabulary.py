@@ -67,6 +67,7 @@ def save_vocabulary(
 def list_vocabulary(
     limit: int = 20,
     level: Optional[str] = None,
+    offset: int = 0,
     user: User = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
@@ -74,18 +75,24 @@ def list_vocabulary(
     if level:
         query = query.filter(Vocabulary.level == level)
     # Ordenar por menos practicadas primero (para priorizar en ejercicios)
-    words = query.order_by(Vocabulary.times_practiced.asc(), Vocabulary.created_at.desc()).limit(limit).all()
-    return [
-        {
-            "id": w.id,
-            "word": w.word,
-            "definition": w.definition,
-            "level": w.level,
-            "target_lang": w.target_lang,
-            "times_seen": w.times_seen,
-            "times_practiced": w.times_practiced,
-            "last_score": w.last_score,
-            "created_at": w.created_at.isoformat() if w.created_at else None
-        }
-        for w in words
-    ]
+    words = query.order_by(Vocabulary.times_practiced.asc(), Vocabulary.created_at.desc()).offset(offset).limit(min(limit, 100)).all()
+    total = db.query(Vocabulary).filter(Vocabulary.user_id == user.id).count()
+    return {
+        "words": [
+            {
+                "id": w.id,
+                "word": w.word,
+                "definition": w.definition,
+                "level": w.level,
+                "target_lang": w.target_lang,
+                "times_seen": w.times_seen,
+                "times_practiced": w.times_practiced,
+                "last_score": w.last_score,
+                "created_at": w.created_at.isoformat() if w.created_at else None
+            }
+            for w in words
+        ],
+        "total": total,
+        "offset": offset,
+        "limit": min(limit, 100)
+    }

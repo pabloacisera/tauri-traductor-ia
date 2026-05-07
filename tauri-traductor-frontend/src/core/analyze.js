@@ -215,7 +215,7 @@ window.openAnalysisModal = async function(text, translated, source, target) {
     } catch (error) {
         console.error('Modal Analysis Error:', error);
         overlay.querySelector('.spinner-container').innerHTML = `
-            <p style="color:#e74c3c;">Error al cargar el análisis.</p>
+            <p style="color:#e74c3c;">No se pudo procesar el análisis lingüístico. Por favor, intentá de nuevo.</p>
             <button onclick="this.closest('#linguistic-modal-overlay').remove()" 
                     class="analyze-btn" style="margin-top:10px;">Cerrar</button>
         `;

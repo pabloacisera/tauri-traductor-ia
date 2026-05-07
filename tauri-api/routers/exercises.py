@@ -21,7 +21,15 @@ groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 WINS_TO_ADVANCE = 3
 FAILS_TO_RETREAT = 2
-PASS_SCORE = 80
+PASS_SCORE_BY_LEVEL = {
+    'A1': 65,
+    'A2': 70,
+    'B1': 75,
+    'B2': 78,
+    'C1': 82,
+    'C2': 85,
+}
+PASS_SCORE_DEFAULT = 75
 
 class ExerciseRequestResponse(BaseModel):
     blocked: bool
@@ -223,8 +231,10 @@ def submit_exercise(
     score = min(100, max(0, int(eval_data.get("score", 0))))
     feedback = eval_data.get("feedback", "Sin feedback")
 
+    pass_score = PASS_SCORE_BY_LEVEL.get(exercise.level, PASS_SCORE_DEFAULT)
+
     # Actualizar ejercicio
-    exercise.status = "passed" if score >= PASS_SCORE else "failed"
+    exercise.status = "passed" if score >= pass_score else "failed"
     exercise.score = score
     exercise.llm_feedback = feedback
     db.commit()
@@ -240,7 +250,7 @@ def submit_exercise(
     level_changed = False
     new_level = None
 
-    if score >= PASS_SCORE:
+    if score >= pass_score:
         progress.consecutive_wins += 1
         progress.consecutive_fails = 0
         if progress.consecutive_wins >= WINS_TO_ADVANCE:
@@ -265,7 +275,7 @@ def submit_exercise(
 
     progress.current_exercise_id = None
     progress.total_exercises += 1
-    if score >= PASS_SCORE:
+    if score >= pass_score:
         progress.total_correct += 1
     progress.updated_at = datetime.utcnow()
     db.commit()

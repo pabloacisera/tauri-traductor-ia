@@ -12,13 +12,28 @@ function authHeaders() {
   return h;
 }
 
+let currentExercise = null;
+let currentLevel = 'A1';
+let hasWords = false;
+
 // [ADDED v6.0] Inyectar HTML del panel en el body
 document.body.insertAdjacentHTML('beforeend', `
-<!-- [ADDED v6.0] Panel de práctica deslizable — se inyecta en body, no interfiere con el traductor -->
-<div id="practice-tab-trigger" class="practice-tab-trigger hidden">
-  <span class="practice-tab-label">Práctica</span>
-  <span class="practice-level-badge" id="practice-badge-level">A1</span>
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+<!-- [ADDED v8.0] Barra de pestañas inferiores -->
+<div id="bottom-tabs-bar" class="bottom-tabs-bar">
+  <button class="bottom-tab" id="tab-exercises" data-panel="exercises">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+    <span>Ejercicios</span>
+    <span class="tab-badge" id="tab-exercises-badge">A1</span>
+  </button>
+  <button class="bottom-tab" id="tab-vocabulary" data-panel="vocabulary">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+    <span>Vocabulario</span>
+    <span class="tab-badge tab-badge-count hidden" id="tab-vocab-count">0</span>
+  </button>
+  <button class="bottom-tab" id="tab-metrics" data-panel="metrics">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Métricas</span>
+  </button>
 </div>
 
 <div id="practice-panel" class="practice-panel">
@@ -40,52 +55,56 @@ document.body.insertAdjacentHTML('beforeend', `
     <!-- ejercicio activo o estado vacío -->
   </div>
 </div>
+
+<div id="vocabulary-panel" class="practice-panel">
+  <div class="practice-panel-header">
+    <span style="font-weight:600;font-size:var(--size-small)">Vocabulario guardado</span>
+    <button id="btn-close-vocabulary">&times;</button>
+  </div>
+  <div id="vocabulary-panel-content" style="padding:var(--space-4);overflow-y:auto;flex:1">
+    <div class="practice-spinner"></div>
+  </div>
+</div>
 `);
 
-const trigger = document.getElementById('practice-tab-trigger');
+// [ADDED v8.0] Referencias a elementos del DOM (después de inyectar HTML)
 const panel = document.getElementById('practice-panel');
 const area = document.getElementById('practice-exercise-area');
 const levelTrack = document.getElementById('practice-level-track');
 const progressFill = document.getElementById('practice-progress-fill');
-const badgeLevel = document.getElementById('practice-badge-level');
+const badgeLevel = document.getElementById('tab-exercises-badge');
 
-let currentExercise = null;
-let currentLevel = 'A1';
-let hasWords = false;
-
-// [ADDED v6.0] Verificar si debe mostrarse la pestaña
+// [ADDED v8.0] Verificar visibilidad y actualizar badges
 async function checkVisibility() {
   const token = getToken();
   if (!token) {
-    trigger.classList.add('hidden');
-    panel.classList.remove('open');
+    document.getElementById('tab-exercises-badge').textContent = 'A1';
+    document.getElementById('tab-vocab-count').classList.add('hidden');
     return;
   }
-
   try {
     const res = await fetch(`${API_BASE}/vocabulary/list?limit=1`, { headers: authHeaders() });
     const data = await res.json();
-    hasWords = Array.isArray(data) && data.length > 0;
-    if (hasWords) {
-      trigger.classList.remove('hidden');
-      // Actualizar nivel desde métricas
-      const mres = await fetch(`${API_BASE}/metrics/summary`, { headers: authHeaders() });
-      const mdata = await mres.json();
-      if (mdata.current_level) {
-        currentLevel = mdata.current_level;
-        updateLevelUI(currentLevel);
-      }
+    const total = data.total ?? 0;
+    const countBadge = document.getElementById('tab-vocab-count');
+    if (total > 0) {
+      countBadge.textContent = total;
+      countBadge.classList.remove('hidden');
     } else {
-      trigger.classList.add('hidden');
+      countBadge.classList.add('hidden');
     }
-  } catch (e) {
-    trigger.classList.add('hidden');
-  }
+    const mres = await fetch(`${API_BASE}/metrics/summary`, { headers: authHeaders() });
+    const mdata = await mres.json();
+    if (mdata.current_level) {
+      currentLevel = mdata.current_level;
+      document.getElementById('tab-exercises-badge').textContent = mdata.current_level;
+      updateLevelUI(mdata.current_level);
+    }
+  } catch(e) {}
 }
 
 function updateLevelUI(level) {
   const levels = ['A1','A2','B1','B2','C1','C2'];
-  badgeLevel.textContent = level;
   levelTrack.innerHTML = levels.map(l => {
     const cls = l === level ? 'level-dot current' : 'level-dot inactive';
     return `<span class="${cls}">${l}</span>`;
@@ -96,33 +115,58 @@ function updateLevelUI(level) {
   progressFill.style.width = `${pct}%`;
 }
 
-// [ADDED v6.0] Abrir/cerrar panel
-trigger.onclick = () => {
+// [ADDED v8.0] Handlers de tabs
+function handleTabClick(panelName) {
   const token = getToken();
   if (!token) {
     window.openAuthModal(() => {
-      checkVisibility().then(() => openPanel());
-    }, 'Iniciá sesión para practicar vocabulario');
+      checkVisibility().then(() => openPanelByName(panelName));
+    }, 'Iniciá sesión para acceder a esta función');
     return;
   }
-  openPanel();
-};
+  openPanelByName(panelName);
+}
 
-function openPanel() {
-  panel.classList.add('open');
-  if (!currentExercise) {
-    loadExercise();
+function openPanelByName(name) {
+  closeAllPanels();
+  if (name === 'exercises') {
+    panel.classList.add('open');
+    if (!currentExercise) loadExercise();
+  } else if (name === 'vocabulary') {
+    document.getElementById('vocabulary-panel').classList.add('open');
+    loadVocabularyPanel();
+  } else if (name === 'metrics') {
+    if (window.openMetricsModal) window.openMetricsModal();
   }
 }
+
+function closeAllPanels() {
+  panel.classList.remove('open');
+  const vp = document.getElementById('vocabulary-panel');
+  if (vp) vp.classList.remove('open');
+}
+
+document.getElementById('tab-exercises').onclick = () => handleTabClick('exercises');
+document.getElementById('tab-vocabulary').onclick = () => handleTabClick('vocabulary');
+document.getElementById('tab-metrics').onclick = () => handleTabClick('metrics');
 
 document.getElementById('btn-close-practice').onclick = () => {
   panel.classList.remove('open');
 };
 
+document.getElementById('btn-close-vocabulary').onclick = () => {
+  document.getElementById('vocabulary-panel').classList.remove('open');
+};
+
 // Cerrar al hacer click fuera
 document.addEventListener('click', (e) => {
-  if (panel.classList.contains('open') && !panel.contains(e.target) && !trigger.contains(e.target)) {
+  const tabsBar = document.getElementById('bottom-tabs-bar');
+  if (panel.classList.contains('open') && !panel.contains(e.target) && !tabsBar.contains(e.target)) {
     panel.classList.remove('open');
+  }
+  const vp = document.getElementById('vocabulary-panel');
+  if (vp && vp.classList.contains('open') && !vp.contains(e.target) && !tabsBar.contains(e.target)) {
+    vp.classList.remove('open');
   }
 });
 
@@ -253,8 +297,8 @@ function renderFeedback(data) {
   if (data.level_changed && data.new_level) {
     currentLevel = data.new_level;
     updateLevelUI(currentLevel);
-    trigger.classList.add('level-change-animation');
-    setTimeout(() => trigger.classList.remove('level-change-animation'), 700);
+    document.getElementById('tab-exercises').classList.add('level-change-animation');
+    setTimeout(() => document.getElementById('tab-exercises').classList.remove('level-change-animation'), 700);
   }
 
   const nextBtn = area.querySelector('#practice-next');
@@ -267,6 +311,48 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// [ADDED v8.0] Cargar panel de vocabulario
+async function loadVocabularyPanel() {
+  const content = document.getElementById('vocabulary-panel-content');
+  content.innerHTML = '<div class="practice-spinner" style="margin:var(--space-8) auto"></div>';
+  try {
+    const res = await fetch(`${API_BASE}/vocabulary/list?limit=100`, { headers: authHeaders() });
+    const data = await res.json();
+    const words = data.words || [];
+    if (words.length === 0) {
+      content.innerHTML = '<div class="practice-empty-state">No tenés palabras guardadas todavía. Guardá palabras desde el análisis lingüístico.</div>';
+      return;
+    }
+    const byLevel = {};
+    words.forEach(w => {
+      if (!byLevel[w.level]) byLevel[w.level] = [];
+      byLevel[w.level].push(w);
+    });
+    const levels = ['A1','A2','B1','B2','C1','C2'];
+    let html = '';
+    levels.forEach(lvl => {
+      if (!byLevel[lvl]?.length) return;
+      html += `<div class="vocab-level-group"><div class="vocab-level-header">${lvl}</div>`;
+      byLevel[lvl].forEach(w => {
+        const score = w.last_score != null ? `· ${w.last_score}pts` : '';
+        html += `
+          <div class="vocab-word-row">
+            <div>
+              <span class="vocab-word-name">${escapeHtml(w.word)}</span>
+              <span class="vocab-word-meta"> ${escapeHtml(w.target_lang)} ${score}</span>
+            </div>
+            <div class="vocab-word-def">${escapeHtml(w.definition)}</div>
+          </div>
+        `;
+      });
+      html += `</div>`;
+    });
+    content.innerHTML = html;
+  } catch(e) {
+    content.innerHTML = '<div class="practice-empty-state">Error cargando vocabulario.</div>';
+  }
 }
 
 // [ADDED v6.0] Reaccionar a cambios de autenticación y vocabulario guardado

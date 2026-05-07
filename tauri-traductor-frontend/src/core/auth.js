@@ -116,6 +116,7 @@ window.openAuthModal = function(callback, message) {
       }
       localStorage.setItem('contextia_token', data.token);
       localStorage.setItem('contextia_user_id', data.user_id);
+      localStorage.setItem('contextia_user_email', email);
       closeModal();
       if (authCallback) authCallback();
       // [ADDED v7.0] Notificar a otros módulos que el auth cambió
@@ -172,5 +173,45 @@ window.fetch = async function(url, options = {}) {
   if (!headers['Authorization'] && !headers['X-Anonymous-ID']) {
     headers['X-Anonymous-ID'] = getAnonymousId();
   }
-  return _originalFetch(actualUrl, { ...options, headers });
+  const fetchResult = await _originalFetch(actualUrl, { ...options, headers });
+
+  if (typeof url === 'string' && url.includes('/translate') && !getToken()) {
+    const clone = fetchResult.clone();
+    clone.json().then(data => {
+      if (data && typeof data.translations_remaining === 'number') {
+        updateAnonymousCounter(data.translations_remaining);
+      }
+    }).catch(() => {});
+  }
+
+  return fetchResult;
 };
+
+// [ADDED v8.0] Contador de traducciones para usuarios anónimos
+function updateAnonymousCounter(remaining) {
+  let counter = document.getElementById('anon-translation-counter');
+  if (!isAuthenticated()) {
+    if (!counter) {
+      const header = document.getElementById('header-session');
+      if (header) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'anon-translation-counter';
+        wrapper.className = 'anon-counter';
+        header.insertBefore(wrapper, header.firstChild);
+        counter = wrapper;
+      }
+    }
+    if (counter) {
+      counter.textContent = `${remaining} traducciones restantes`;
+      counter.className = `anon-counter ${remaining <= 5 ? 'anon-counter-low' : ''}`;
+    }
+    if (remaining === 0) {
+      showLimitReachedModal();
+    }
+  }
+}
+
+function showLimitReachedModal() {
+  if (document.getElementById('limit-reached-overlay')) return;
+  window.openAuthModal(null, '🚫 Límite diario alcanzado. Registrate para traducciones ilimitadas');
+}

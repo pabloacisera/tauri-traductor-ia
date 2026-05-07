@@ -11,9 +11,13 @@ import './core/practice.js';
 import './core/metrics.js';
 
 document.querySelector('#app').innerHTML = `
+<header id="app-header">
+  <div class="header-logo">Context<span>IA</span></div>
+  <div class="header-session" id="header-session">
+    <!-- se rellena por JS después -->
+  </div>
+</header>
 <section id="center">
-  <h3 class="app-logo">Context<span>IA</span></h3>
-
   <div class="options-banner">
     <label for="select-list-language">seleccione un lenguaje de traducción</label>
     <select id="list" name="select-list-language">
@@ -58,3 +62,43 @@ document.querySelector('#app').innerHTML = `
 // IMPORTANTE: Primero se crea el HTML, luego se activa el JS
 setupTextareaForceEnd();
 addListener();
+
+// [ADDED v8.0] Renderizar estado de sesión en el header
+function renderSessionHeader() {
+  const container = document.getElementById('header-session');
+  if (!container) return;
+  const token = window.contextiaAuth?.getToken?.();
+  if (token) {
+    const email = localStorage.getItem('contextia_user_email') || 'Usuario';
+    const initial = email.charAt(0).toUpperCase();
+    container.innerHTML = `
+      <div class="header-user">
+        <div class="header-avatar">${initial}</div>
+        <span class="header-email">${email}</span>
+        <button class="header-logout-btn" id="header-logout">Salir</button>
+      </div>
+    `;
+    document.getElementById('header-logout').onclick = async () => {
+      try {
+        await fetch('http://localhost:8000/auth/logout', {
+          method: 'POST',
+          headers: window.contextiaAuth.authHeaders()
+        });
+      } catch(e) {}
+      localStorage.removeItem('contextia_token');
+      localStorage.removeItem('contextia_user_id');
+      localStorage.removeItem('contextia_user_email');
+      window.dispatchEvent(new Event('contextia:authchange'));
+    };
+  } else {
+    container.innerHTML = `
+      <button class="header-login-btn" id="header-login">Iniciar sesión</button>
+    `;
+    document.getElementById('header-login').onclick = () => {
+      window.openAuthModal(null, 'Accedé a tu cuenta');
+    };
+  }
+}
+
+renderSessionHeader();
+window.addEventListener('contextia:authchange', renderSessionHeader);
