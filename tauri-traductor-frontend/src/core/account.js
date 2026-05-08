@@ -48,86 +48,144 @@ accountStyles.innerHTML = `
   .account-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.85);
     z-index: 8500;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
   }
   .account-modal {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    width: min(420px, 95vw);
-    padding: var(--space-6);
+    width: min(500px, 95vw);
+    padding: var(--space-8);
     font-family: var(--font-mono);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
   }
   .account-modal-header {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: var(--space-6);
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: var(--space-8);
+    gap: var(--space-4);
   }
   .account-avatar-large {
-    width: 48px; height: 48px;
+    width: 64px; height: 64px;
     border-radius: 50%;
     background: var(--bg-tertiary);
-    border: 1px solid var(--accent-color);
+    border: 2px solid var(--accent-color);
     display: flex; align-items: center; justify-content: center;
-    font-size: 20px; font-weight: 700;
+    font-size: 28px; font-weight: 700;
     color: var(--accent-color);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  }
+  .account-info-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .account-email-display {
+    font-size: var(--size-base);
+    color: var(--text-primary);
+    font-weight: 600;
   }
   .account-plan-badge {
     display: inline-block;
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: var(--radius-full);
     font-size: var(--size-tiny);
     font-weight: 700;
     letter-spacing: 1px;
+    text-transform: uppercase;
   }
   .account-plan-badge.free { background: #222; color: #888; border: 1px solid #333; }
   .account-plan-badge.pro { background: rgba(16,185,129,0.15); color: var(--accent-color); border: 1px solid var(--accent-color); }
+  
+  .account-stats-container {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-6);
+    border: 1px solid var(--border-color);
+  }
   .account-stat-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--border-color);
     font-size: var(--size-xsmall);
   }
   .account-stat-label { color: var(--text-muted); }
   .account-stat-value { color: var(--text-primary); font-weight: 600; }
   .account-usage-bar {
-    background: #222;
+    background: #111;
     border-radius: var(--radius-full);
-    height: 4px;
-    margin-top: var(--space-1);
+    height: 6px;
+    margin: var(--space-2) 0 var(--space-1) 0;
     overflow: hidden;
   }
   .account-usage-bar-fill {
     height: 100%;
     background: var(--accent-color);
     border-radius: var(--radius-full);
-    transition: width 0.5s ease;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .account-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+    position: relative;
   }
   .account-action-btn {
     width: 100%;
-    background: none;
+    background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     font-family: var(--font-mono);
     font-size: var(--size-xsmall);
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     transition: all var(--transition-fast);
-    margin-top: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
   }
-  .account-action-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
-  .account-action-btn.danger:hover { border-color: #e74c3c; color: #e74c3c; }
-  .account-close-btn { background:none;border:none;color:var(--text-muted);font-size:22px;cursor:pointer; }
+  .account-action-btn:hover { 
+    border-color: var(--accent-color); 
+    color: var(--accent-color);
+    background: rgba(16, 185, 129, 0.05);
+  }
+  .account-action-btn.pro-btn {
+    background: var(--accent-color);
+    color: #000;
+    font-weight: 700;
+    border: none;
+  }
+  .account-action-btn.pro-btn:hover {
+    background: var(--accent-hover);
+    color: #000;
+  }
+  .account-action-btn.danger:hover { 
+    border-color: #ef4444; 
+    color: #ef4444; 
+    background: rgba(239, 68, 68, 0.05);
+  }
+  .account-close-btn { 
+    position: absolute;
+    top: var(--space-4);
+    right: var(--space-4);
+    background:none; border:none; color:var(--text-muted); font-size:24px; cursor:pointer; 
+    transition: color var(--transition-fast);
+  }
+  .account-close-btn:hover { color: var(--text-primary); }
 
   /* ——— Pricing modal ——— */
   .pricing-overlay {
@@ -138,94 +196,110 @@ accountStyles.innerHTML = `
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
   }
   .pricing-modal {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    width: min(500px, 95vw);
-    padding: var(--space-8);
+    width: min(960px, 96vw);
+    padding: 56px 64px;
     font-family: var(--font-mono);
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    min-height: 600px;          /* ← altura mínima */
+    max-height: 90vh;
   }
   .pricing-title {
     color: var(--text-primary);
-    font-size: var(--size-h1);
-    font-weight: 700;
+    font-size: 2rem;
+    font-weight: 800;
     text-align: center;
     margin-bottom: var(--space-2);
+    letter-spacing: -0.025em;
   }
   .pricing-subtitle {
     color: var(--text-muted);
-    font-size: var(--size-xsmall);
+    font-size: var(--size-small);
     text-align: center;
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
   }
   .pricing-plans {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
   }
   .pricing-plan {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    padding: 40px 36px;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--transition-normal);
   }
+  .pricing-plan:hover { transform: translateY(-4px); }
   .pricing-plan.recommended {
     border-color: var(--accent-color);
+    background: rgba(16, 185, 129, 0.03);
     position: relative;
+    transform: scale(1.05);
   }
+  .pricing-plan.recommended:hover { transform: scale(1.05) translateY(-4px); }
   .pricing-plan.recommended::before {
-    content: "Recomendado";
+    content: "RECOMENDADO";
     position: absolute;
-    top: -10px;
+    top: -12px;
     left: 50%; transform: translateX(-50%);
     background: var(--accent-color);
     color: #000;
     font-size: 10px;
-    font-weight: 700;
-    padding: 2px 8px;
+    font-weight: 800;
+    padding: 4px 12px;
     border-radius: var(--radius-full);
     white-space: nowrap;
+    letter-spacing: 0.05em;
   }
-  .pricing-plan-name { font-size: var(--size-xsmall); color: var(--text-muted); margin-bottom: var(--space-1); }
+  .pricing-plan-name { font-size: var(--size-tiny); color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: var(--space-4); }
   .pricing-plan-price {
-    font-size: 1.75rem;
-    font-weight: 700;
+    font-size: 3rem;
+    font-weight: 800;
     color: var(--accent-color);
     margin-bottom: var(--space-1);
   }
-  .pricing-plan-period { font-size: var(--size-tiny); color: var(--text-muted); margin-bottom: var(--space-3); }
+  .pricing-plan-period { font-size: var(--size-xsmall); color: var(--text-muted); margin-bottom: var(--space-6); }
   .pricing-plan-btn {
     width: 100%;
     background: var(--accent-color);
     color: #000;
     border: none;
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     font-family: var(--font-mono);
-    font-weight: 700;
-    font-size: var(--size-tiny);
+    font-weight: 800;
+    font-size: var(--size-small);
     cursor: pointer;
-    transition: opacity var(--transition-fast);
+    transition: all var(--transition-fast);
+    margin-top: auto;
   }
-  .pricing-plan-btn:hover { opacity: 0.85; }
+  .pricing-plan-btn:hover { background: var(--accent-hover); }
   .pricing-features {
-    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3) var(--space-6);
     margin-top: var(--space-4);
+    list-style: none;
   }
   .pricing-features li {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
     font-size: var(--size-xsmall);
     color: var(--text-secondary);
-    padding: var(--space-1) 0;
   }
-  .pricing-features li::before { content: "✓"; color: var(--accent-color); font-weight: 700; }
+  .pricing-features li::before { content: "✓"; color: var(--accent-color); font-weight: 800; }
   .pricing-dismiss {
     background: none;
     border: none;
@@ -235,8 +309,9 @@ accountStyles.innerHTML = `
     cursor: pointer;
     width: 100%;
     text-align: center;
-    padding: var(--space-2);
-    margin-top: var(--space-2);
+    padding: var(--space-4);
+    margin-top: var(--space-4);
+    transition: color var(--transition-fast);
   }
   .pricing-dismiss:hover { color: var(--text-primary); }
 
@@ -314,14 +389,11 @@ window.openAccountModal = async function() {
   overlay.className = 'account-overlay';
   overlay.innerHTML = `
     <div class="account-modal">
-      <div class="account-modal-header">
-        <div>
-          <div class="account-avatar-large" id="account-avatar">...</div>
+      <button class="account-close-btn" id="account-close-btn">&times;</button>
+      <div id="account-modal-body" style="width:100%">
+        <div style="display:flex;align-items:center;justify-content:center;min-height:300px">
+          <div style="width:32px;height:32px;border:3px solid #333;border-top-color:var(--accent-color);border-radius:50%;animation:spin 0.8s linear infinite"></div>
         </div>
-        <button class="account-close-btn" id="account-close-btn">&times;</button>
-      </div>
-      <div id="account-modal-body" style="display:flex;align-items:center;justify-content:center;min-height:100px">
-        <div style="width:24px;height:24px;border:2px solid #333;border-top-color:var(--accent-color);border-radius:50%;animation:spin 0.8s linear infinite"></div>
       </div>
     </div>
   `;
@@ -343,43 +415,51 @@ window.openAccountModal = async function() {
     const used = user.daily_translations || 0;
     const usedPercent = user.translations_limit === -1 ? 0 : Math.min(100, (used / user.translations_limit) * 100);
     
-    document.getElementById('account-avatar').textContent = initial;
-    
     document.getElementById('account-modal-body').innerHTML = `
-      <div style="margin-bottom:var(--space-2)">
-        <span style="font-size:var(--size-small);color:var(--text-primary)">${email}</span>
-        <span class="account-plan-badge ${isPro ? 'pro' : 'free'}" style="margin-left:var(--space-2)">
-          ${isPro ? 'PRO' : 'FREE'}
-        </span>
-      </div>
-      
-      <div class="account-stat-row">
-        <span class="account-stat-label">Traducciones hoy</span>
-        <span class="account-stat-value">${used} / ${limit}</span>
-      </div>
-      ${user.translations_limit !== -1 ? `
-        <div class="account-usage-bar">
-          <div class="account-usage-bar-fill" style="width:${usedPercent}%"></div>
+      <div class="account-modal-header">
+        <div class="account-avatar-large" id="account-avatar">${initial}</div>
+        <div class="account-info-main">
+          <span class="account-email-display">${email}</span>
+          <div>
+            <span class="account-plan-badge ${isPro ? 'pro' : 'free'}">
+              ${isPro ? 'PRO' : 'FREE'}
+            </span>
+          </div>
         </div>
-      ` : ''}
+      </div>
       
-      ${user.subscription_end ? `
+      <div class="account-stats-container">
         <div class="account-stat-row">
-          <span class="account-stat-label">Plan vence</span>
-          <span class="account-stat-value">${new Date(user.subscription_end).toLocaleDateString('es-AR')}</span>
+          <span class="account-stat-label">Traducciones hoy</span>
+          <span class="account-stat-value">${used} / ${limit}</span>
         </div>
-      ` : ''}
+        ${user.translations_limit !== -1 ? `
+          <div class="account-usage-bar">
+            <div class="account-usage-bar-fill" style="width:${usedPercent}%"></div>
+          </div>
+        ` : ''}
+        
+        ${user.subscription_end ? `
+          <div class="account-stat-row" style="margin-top:var(--space-2)">
+            <span class="account-stat-label">Plan vence</span>
+            <span class="account-stat-value">${new Date(user.subscription_end).toLocaleDateString('es-AR')}</span>
+          </div>
+        ` : ''}
+      </div>
       
-      <div style="margin-top:var(--space-4)">
+      <div class="account-actions-grid">
         <button class="account-action-btn" id="account-view-history">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           Ver historial completo
         </button>
         ${!isPro ? `
-          <button class="account-action-btn" id="account-upgrade-btn" style="border-color:var(--accent-color);color:var(--accent-color)">
+          <button class="account-action-btn pro-btn" id="account-upgrade-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
             Actualizar a Pro
           </button>
         ` : ''}
         <button class="account-action-btn danger" id="account-logout-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
           Cerrar sesión
         </button>
       </div>

@@ -158,43 +158,6 @@
 }
 
 /* ─── Practice Panel ─── */
-.practice-tab-trigger {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-bottom: none;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  padding: var(--space-2) var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  cursor: pointer;
-  z-index: 9990;
-  transition: var(--transition-normal);
-  font-size: var(--size-small);
-  color: var(--text-secondary);
-}
-.practice-tab-trigger:hover {
-  border-color: var(--border-hover);
-  color: var(--text-primary);
-}
-.practice-tab-trigger.hidden {
-  display: none;
-}
-.practice-tab-label {
-  font-weight: 600;
-}
-.practice-level-badge {
-  background: var(--accent-color);
-  color: white;
-  font-size: var(--size-tiny);
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: var(--radius-md);
-}
 .practice-panel {
   position: fixed;
   bottom: 0;
@@ -733,8 +696,8 @@
 
 /* ─── Fix 1: Corrección de altura del panel para evitar solapamiento con la barra ─── */
 .practice-panel {
-    bottom: 72px !important;
-    height: calc(100% - 72px) !important;
+    bottom: 56px !important;
+    height: calc(100% - 56px) !important;
     transform: translateY(100%);
 }
 .practice-panel.open {
@@ -749,11 +712,6 @@
 .input-column, .output-column {
     display: flex;
     flex-direction: column;
-    min-height: 200px;
-}
-.output-column {
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
 }
 
 /* ─── Fix 4: Centrado del icono Play ─── */
@@ -767,5 +725,3 @@
     margin: 0 !important;
     display: block;
 }
-
-

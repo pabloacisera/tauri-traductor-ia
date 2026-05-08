@@ -182,27 +182,9 @@ historyStyles.innerHTML = `
 `;
 document.head.appendChild(historyStyles);
 
-// ——— Inyectar botón de historial en el header ———
-// Se agrega después de que el DOM esté listo, junto al header-session
+// ——— Inyectar botón de historial en el header (ELIMINADO - Ahora en Perfil) ———
 function injectHistoryButton() {
-  const header = document.getElementById('app-header');
-  if (!header || document.getElementById('history-header-btn')) return;
-  
-  const btn = document.createElement('button');
-  btn.id = 'history-header-btn';
-  btn.className = 'history-icon-btn';
-  btn.title = 'Historial de traducciones';
-  btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-  btn.style.marginRight = '8px';
-  
-  const sessionDiv = document.getElementById('header-session');
-  if (sessionDiv) {
-    header.insertBefore(btn, sessionDiv);
-  } else {
-    header.appendChild(btn);
-  }
-  
-  btn.onclick = () => openHistoryPanel();
+  // No hacer nada, el botón de historial ahora vive dentro del modal de perfil
 }
 
 // ——— Panel principal de historial ———

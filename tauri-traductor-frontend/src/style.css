@@ -158,8 +158,7 @@ h3 {
   overflow: hidden;
   position: relative;
   transition: var(--transition-fast);
-  min-height: 280px;
-  max-height: 400px;
+  height: clamp(220px, 30vh, 380px);   /* ← fijo y responsivo */
 }
 
 .input-text-area:focus-within {
@@ -169,7 +168,7 @@ h3 {
 
 .input-text-area textarea {
   width: 100%;
-  height: 280px;
+  height: 100%;     /* ← ocupa todo el contenedor */
   background: transparent;
   border: none;
   outline: none;
@@ -268,6 +267,7 @@ h3 {
   font-size: var(--size-base);
   overflow-y: auto;
   height: 100%;
+  box-sizing: border-box;
 }
 
 .js-output-target:empty::before {
@@ -415,15 +415,6 @@ h3 {
   
   .output-column {
     order: 3;
-  }
-
-  .input-text-area, .output-text-area {
-    min-height: 200px;
-    max-height: 300px;
-  }
-
-  .input-text-area textarea {
-    height: 200px;
   }
 }
 

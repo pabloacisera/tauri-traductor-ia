@@ -76,7 +76,7 @@ function renderSessionHeader() {
 
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:8px">
-        ${!isPro ? '<button class="upgrade-pro-btn" id="header-upgrade-btn">Pro</button>' : ''}
+        ${!isPro ? '<button class="upgrade-pro-btn" id="header-upgrade-btn">Únete a PRO</button>' : ''}
         <button class="profile-btn" id="header-profile-btn" title="${email}">
           ${initial}
           <span class="plan-badge-dot ${isPro ? 'pro' : ''}"></span>
