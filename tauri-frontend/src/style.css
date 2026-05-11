@@ -138,14 +138,16 @@ h3 {
 
 /* TRANSLATOR LAYOUT */
 .translator-layout {
-  display: grid;
-  grid-template-columns: 1fr 48px 1fr;
+  display: flex;
+  flex-direction: row;
   gap: var(--space-4);
-  align-items: start;
+  align-items: center;
 }
 
 /* COLUMNS */
 .input-column, .output-column {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -158,7 +160,8 @@ h3 {
   overflow: hidden;
   position: relative;
   transition: var(--transition-fast);
-  height: clamp(220px, 30vh, 380px);   /* ← fijo y responsivo */
+  height: clamp(220px, 30vh, 380px);
+  width: 100%;
 }
 
 .input-text-area:focus-within {
@@ -178,6 +181,7 @@ h3 {
   font-size: var(--size-base);
   resize: none;
   line-height: 1.6;
+  min-width: 0;
 }
 
 .input-text-area textarea::placeholder {
@@ -223,9 +227,10 @@ h3 {
 
 /* BUTTON */
 .button-column {
-  padding-top: 116px; /* Align with middle of textarea roughly */
+  flex: 0 0 56px;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .translate-button {
@@ -415,6 +420,15 @@ h3 {
   
   .output-column {
     order: 3;
+  }
+
+  .options-banner {
+    flex-direction: column;
+    gap: var(--space-2);
+    text-align: center;
+  }
+  .options-banner label {
+    font-size: var(--size-tiny);
   }
 }
 

@@ -136,8 +136,8 @@ function showAnonymousToast() {
   toast.id = 'contextia-toast';
   toast.className = 'contextia-toast';
   toast.innerHTML = `
-    ⚠ Modo sin cuenta: 20 traducciones diarias · 
-    <a id="toast-register-link">Registrate</a> para acceso ilimitado y práctica de vocabulario
+    ⚠ Modo sin cuenta: 5 traducciones gratuitas · 
+    <a id="toast-register-link">Registrate</a> para acceder a 15 traducciones/día
   `;
   document.body.appendChild(toast);
 
@@ -151,10 +151,58 @@ function showAnonymousToast() {
   }, 4000);
 }
 
-// [ADDED v7.0] Al cargar la app: mostrar toast si no está autenticado
-if (!isAuthenticated()) {
-  showAnonymousToast();
+function showLimitToast(msg) {
+  if (document.getElementById('contextia-toast')) return;
+  const toast = document.createElement('div');
+  toast.id = 'contextia-toast';
+  toast.className = 'contextia-toast';
+  toast.innerHTML = `🚫 ${msg}`;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.animation = 'toastFadeOut 0.4s ease forwards';
+    setTimeout(() => toast.remove(), 400);
+  }, 5000);
 }
+
+// [ADDED v7.0] Al cargar la app: mostrar toast si no está autenticado (solo 1 vez cada 24h)
+if (!isAuthenticated()) {
+  const lastShown = localStorage.getItem('contextia_toast_shown');
+  const now = Date.now();
+  const oneDay = 24 * 60 * 60 * 1000;
+  if (!lastShown || (now - parseInt(lastShown)) > oneDay) {
+    showAnonymousToast();
+    localStorage.setItem('contextia_toast_shown', now.toString());
+  }
+}
+
+// [ADDED v8.0] Cargar contadores de anónimos al iniciar
+async function loadAnonymousCounters() {
+  if (isAuthenticated()) return;
+  try {
+    const { getClientSeed } = await import('../utils/device.js');
+    const seed = await getClientSeed();
+    if (!seed) return;
+
+    const res = await fetch(`${API_BASE}/subscription/anonymous-status`, {
+      headers: {
+        'X-Device-Seed': seed,
+        'X-Anonymous-ID': getAnonymousId()
+      }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.translations_remaining != null) {
+        updateAnonymousCounter(data.translations_remaining);
+      }
+      if (data.exercises_remaining != null) {
+        updateAnonymousExercisesCounter(data.exercises_remaining);
+      }
+    }
+  } catch(e) {}
+}
+
+loadAnonymousCounters();
 
 // [ADDED v2.0] Interceptar fetch para usar /translate/tracked y enviar headers de anonimato sin modificar sendTextToTranslate.js
 const _originalFetch = window.fetch;
@@ -163,7 +211,6 @@ window.fetch = async function(url, options = {}) {
   if (typeof url === 'string' && url === `${API_BASE}/translate`) {
     actualUrl = `${API_BASE}/translate/tracked`;
   }
-  // Asegurar headers planos
   let headers = options.headers || {};
   if (headers instanceof Headers) {
     const plain = {};
@@ -173,6 +220,14 @@ window.fetch = async function(url, options = {}) {
   if (!headers['Authorization'] && !headers['X-Anonymous-ID']) {
     headers['X-Anonymous-ID'] = getAnonymousId();
   }
+  // Enviar device seed para tracking de anonymous
+  if (typeof url === 'string' && url.includes('/translate') && !getToken()) {
+    try {
+      const { getClientSeed } = await import('../utils/device.js');
+      const seed = await getClientSeed();
+      headers['X-Device-Seed'] = seed;
+    } catch(e) {}
+  }
   const fetchResult = await _originalFetch(actualUrl, { ...options, headers });
 
   if (typeof url === 'string' && url.includes('/translate') && !getToken()) {
@@ -180,6 +235,13 @@ window.fetch = async function(url, options = {}) {
     clone.json().then(data => {
       if (data && typeof data.translations_remaining === 'number') {
         updateAnonymousCounter(data.translations_remaining);
+      }
+      if (!fetchResult.ok && fetchResult.status === 429) {
+        const detail = data?.detail;
+        const msg = typeof detail === 'object' && detail !== null
+          ? (detail.message || detail.error || JSON.stringify(detail))
+          : (detail || 'Alcanzaste tu límite de traducciones gratuitas.');
+        showLimitToast(msg);
       }
     }).catch(() => {});
   }
@@ -189,27 +251,38 @@ window.fetch = async function(url, options = {}) {
 
 // [ADDED v8.0] Contador de traducciones para usuarios anónimos
 function updateAnonymousCounter(remaining) {
-  let counter = document.getElementById('anon-translation-counter');
+  const slot = document.getElementById('anon-counter-slot');
+  if (!slot) return;
   if (!isAuthenticated()) {
-    if (!counter) {
-      const header = document.getElementById('header-session');
-      if (header) {
-        const wrapper = document.createElement('div');
-        wrapper.id = 'anon-translation-counter';
-        wrapper.className = 'anon-counter';
-        header.insertBefore(wrapper, header.firstChild);
-        counter = wrapper;
-      }
-    }
-    if (counter) {
-      counter.textContent = `${remaining} traducciones restantes`;
-      counter.className = `anon-counter ${remaining <= 5 ? 'anon-counter-low' : ''}`;
-    }
-    if (remaining === 0) {
-      showLimitReachedModal();
-    }
+    const text = remaining === 1
+      ? `${remaining} traducción restante`
+      : `${remaining} traducciones restantes`;
+    slot.textContent = text;
+    slot.className = `anon-counter-slot ${remaining <= 2 ? 'anon-counter-low' : ''}`;
+  } else {
+    slot.textContent = '';
+    slot.className = '';
   }
 }
+
+function updateAnonymousExercisesCounter(remaining) {
+  const slot = document.getElementById('anon-exercises-counter-slot');
+  if (!slot) return;
+  if (!isAuthenticated()) {
+    const text = remaining === 1
+      ? `${remaining} ejercicio restante`
+      : `${remaining} ejercicios restantes`;
+    slot.textContent = text;
+    slot.className = `anon-counter-slot ${remaining <= 2 ? 'anon-counter-low' : ''}`;
+  } else {
+    slot.textContent = '';
+    slot.className = '';
+  }
+}
+
+// Exponer a window para que main.js (SSE) y practice.js puedan llamarlas
+window.updateAnonymousCounter = updateAnonymousCounter;
+window.updateAnonymousExercisesCounter = updateAnonymousExercisesCounter;
 
 function showLimitReachedModal() {
   if (document.getElementById('limit-reached-overlay')) return;

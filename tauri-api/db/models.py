@@ -1,7 +1,7 @@
 # [ADDED v1.0] Modelos ORM para ContextIA — vocabulario, ejercicios, métricas y autenticación
 import uuid
 from datetime import datetime, date
-from sqlalchemy import Column, String, DateTime, Date, Integer, Boolean, ForeignKey, Text
+from sqlalchemy import Column, String, DateTime, Date, Integer, Boolean, ForeignKey, Text, UniqueConstraint
 from db.database import Base
 
 class User(Base):
@@ -57,7 +57,8 @@ class UserProgress(Base):
     __tablename__ = "user_progress"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    language = Column(String(10), nullable=False, default='en')
     current_level = Column(String(5), default="A1")
     current_exercise_id = Column(String(36), nullable=True)
     consecutive_wins = Column(Integer, default=0)
@@ -65,6 +66,8 @@ class UserProgress(Base):
     total_exercises = Column(Integer, default=0)
     total_correct = Column(Integer, default=0)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('user_id', 'language', name='uq_user_progress_lang'),)
 
 class Exercise(Base):
     __tablename__ = "exercises"

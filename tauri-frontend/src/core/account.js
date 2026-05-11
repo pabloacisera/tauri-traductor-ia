@@ -135,6 +135,9 @@ accountStyles.innerHTML = `
     border-radius: var(--radius-full);
     transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   }
+  .account-usage-bar-fill-exercises {
+    background: #3b82f6;
+  }
   .account-actions-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -314,6 +317,42 @@ accountStyles.innerHTML = `
     transition: color var(--transition-fast);
   }
   .pricing-dismiss:hover { color: var(--text-primary); }
+  @media (max-width: 600px) {
+    .pricing-modal {
+      width: 96vw;
+      padding: 32px 20px 24px;
+      min-height: unset;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    .pricing-title {
+      font-size: 1.5rem;
+    }
+    .pricing-subtitle {
+      font-size: var(--size-tiny);
+      margin-bottom: var(--space-4);
+    }
+    .pricing-plans {
+      grid-template-columns: 1fr;
+      gap: var(--space-4);
+    }
+    .pricing-plan {
+      padding: 28px 20px;
+    }
+    .pricing-plan.recommended {
+      transform: scale(1);
+      order: -1;
+    }
+    .pricing-plan.recommended:hover {
+      transform: translateY(-4px);
+    }
+    .pricing-plan-price {
+      font-size: 2.25rem;
+    }
+    .pricing-features li {
+      font-size: var(--size-tiny);
+    }
+  }
 
   /* ——— Welcome-to-Pro modal (post-registro) ——— */
   .welcome-pro-overlay {
@@ -413,8 +452,11 @@ window.openAccountModal = async function() {
     const isPro = user.plan && user.plan !== 'free' && user.plan !== 'anonymous';
     const limit = user.translations_limit === -1 ? '∞' : user.translations_limit;
     const used = user.daily_translations || 0;
+    const exercisesLimit = user.exercises_limit === -1 ? '∞' : user.exercises_limit;
+    const exercisesUsed = user.daily_exercises || 0;
     const usedPercent = user.translations_limit === -1 ? 0 : Math.min(100, (used / user.translations_limit) * 100);
-    
+    const exercisesUsedPercent = user.exercises_limit === -1 ? 0 : Math.min(100, (exercisesUsed / user.exercises_limit) * 100);
+
     document.getElementById('account-modal-body').innerHTML = `
       <div class="account-modal-header">
         <div class="account-avatar-large" id="account-avatar">${initial}</div>
@@ -427,10 +469,10 @@ window.openAccountModal = async function() {
           </div>
         </div>
       </div>
-      
+
       <div class="account-stats-container">
         <div class="account-stat-row">
-          <span class="account-stat-label">Traducciones hoy</span>
+          <span class="account-stat-label">Traducciones usadas</span>
           <span class="account-stat-value">${used} / ${limit}</span>
         </div>
         ${user.translations_limit !== -1 ? `
@@ -438,7 +480,17 @@ window.openAccountModal = async function() {
             <div class="account-usage-bar-fill" style="width:${usedPercent}%"></div>
           </div>
         ` : ''}
-        
+
+        <div class="account-stat-row" style="margin-top:var(--space-4)">
+          <span class="account-stat-label">Ejercicios usados</span>
+          <span class="account-stat-value">${exercisesUsed} / ${exercisesLimit}</span>
+        </div>
+        ${user.exercises_limit !== -1 ? `
+          <div class="account-usage-bar">
+            <div class="account-usage-bar-fill account-usage-bar-fill-exercises" style="width:${exercisesUsedPercent}%"></div>
+          </div>
+        ` : ''}
+
         ${user.subscription_end ? `
           <div class="account-stat-row" style="margin-top:var(--space-2)">
             <span class="account-stat-label">Plan vence</span>
@@ -488,6 +540,11 @@ window.openAccountModal = async function() {
       localStorage.removeItem('contextia_token');
       localStorage.removeItem('contextia_user_id');
       localStorage.removeItem('contextia_user_email');
+      localStorage.removeItem('contextia_plan');
+      localStorage.removeItem('contextia_pending_plan');
+      localStorage.removeItem('contextia_pending_price');
+      localStorage.removeItem('contextia_contract');
+      localStorage.removeItem('x7f2k9');
       overlay.remove();
       window.dispatchEvent(new Event('contextia:authchange'));
     };
@@ -508,31 +565,39 @@ window.openPricingModal = function() {
   overlay.innerHTML = `
     <div class="pricing-modal">
       <div class="pricing-title">Elegí tu plan</div>
-      <div class="pricing-subtitle">Pasá de 15 traducciones/día a uso completamente ilimitado</div>
-      
+      <div class="pricing-subtitle">Más traducciones, análisis y ejercicios para practicar todos los días</div>
+
       <div class="pricing-plans">
         <div class="pricing-plan">
           <div class="pricing-plan-name">MENSUAL</div>
           <div class="pricing-plan-price">$9.99</div>
           <div class="pricing-plan-period">por mes</div>
+          <ul class="pricing-features">
+            <li>150 traducciones al mes</li>
+            <li>150 análisis lingüísticos al mes</li>
+            <li>150 ejercicios nuevos al mes</li>
+            <li>Historial completo de traducciones</li>
+          </ul>
           <button class="pricing-plan-btn" id="btn-monthly">Suscribirme</button>
         </div>
         <div class="pricing-plan recommended">
           <div class="pricing-plan-name">ANUAL</div>
           <div class="pricing-plan-price">$79.99</div>
           <div class="pricing-plan-period">$6.66/mes · ahorrás 33%</div>
+          <ul class="pricing-features">
+            <li>300 traducciones al mes</li>
+            <li>300 análisis lingüísticos al mes</li>
+            <li>300 ejercicios nuevos al mes</li>
+            <li>Historial completo de traducciones</li>
+          </ul>
           <button class="pricing-plan-btn" id="btn-annual">Suscribirme</button>
         </div>
       </div>
-      
-      <ul class="pricing-features">
-        <li>Traducciones ilimitadas</li>
-        <li>Análisis lingüístico ilimitado</li>
-        <li>Sistema de ejercicios y práctica</li>
-        <li>Historial completo de traducciones</li>
-        <li>Acceso anticipado a nuevas funciones</li>
-      </ul>
-      
+
+      <div style="text-align:center;font-size:var(--size-tiny);color:var(--text-muted);padding:var(--space-4) var(--space-2)">
+        El plan <strong style="color:var(--text-secondary)">Free</strong> incluye 15 traducciones, 15 análisis y 15 ejercicios nuevos por día.
+      </div>
+
       <button class="pricing-dismiss" id="pricing-dismiss">Ahora no</button>
     </div>
   `;
@@ -540,19 +605,36 @@ window.openPricingModal = function() {
   
   overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
   document.getElementById('pricing-dismiss').onclick = () => overlay.remove();
-  
-  // Por ahora ambos botones muestran "próximamente" (Stripe a integrar después)
-  ['btn-monthly', 'btn-annual'].forEach((id, i) => {
-    const btn = document.getElementById(id);
-    if (btn) {
-      btn.onclick = () => {
-        btn.textContent = 'Próximamente';
-        btn.disabled = true;
-        // TODO: Integrar Stripe Checkout aquí
-        // window.location.href = STRIPE_CHECKOUT_URL
-      };
+
+  document.getElementById('btn-monthly').onclick = () => {
+    const token = localStorage.getItem('contextia_token');
+    if (token) {
+      overlay.remove();
+      if (window.openFakePaymentModal) window.openFakePaymentModal();
+    } else {
+      localStorage.setItem('contextia_pending_plan', 'monthly');
+      localStorage.setItem('contextia_pending_price', '$9.99');
+      overlay.remove();
+      window.openAuthModal(() => {
+        if (window.openFakePaymentModal) window.openFakePaymentModal();
+      }, 'Iniciá sesión para continuar');
     }
-  });
+  };
+
+  document.getElementById('btn-annual').onclick = () => {
+    const token = localStorage.getItem('contextia_token');
+    if (token) {
+      overlay.remove();
+      if (window.openFakePaymentModal) window.openFakePaymentModal();
+    } else {
+      localStorage.setItem('contextia_pending_plan', 'annual');
+      localStorage.setItem('contextia_pending_price', '$79.99');
+      overlay.remove();
+      window.openAuthModal(() => {
+        if (window.openFakePaymentModal) window.openFakePaymentModal();
+      }, 'Iniciá sesión para continuar');
+    }
+  };
 };
 
 // ——— Modal de bienvenida post-registro ———
@@ -567,10 +649,10 @@ window.showWelcomeProModal = function() {
       <div class="welcome-pro-icon">!</div>
       <div class="welcome-pro-title">¡Bienvenido a ContextIA!</div>
       <div class="welcome-pro-desc">
-        Empezás con <strong>15 traducciones diarias gratuitas</strong>.<br>
-        Actualizá a Pro para acceso ilimitado a traducciones, análisis lingüístico, ejercicios e historial completo.
+        Empezás con <strong>15 traducciones, análisis y ejercicios nuevos por día</strong> (plan Free).<br>
+        Actualizá a Pro para más traducciones, análisis y ejercicios mensuales.
       </div>
-      <button class="welcome-pro-cta" id="welcome-pro-cta">Conocé el plan Pro</button>
+      <button class="welcome-pro-cta" id="welcome-pro-cta">Ver planes Pro</button>
       <button class="welcome-pro-skip" id="welcome-pro-skip">Ahora no</button>
     </div>
   `;
@@ -587,7 +669,6 @@ window.showWelcomeProModal = function() {
 
 // ——— Escuchar cambio de auth ———
 window.addEventListener('contextia:authchange', () => {
-  // Guardar plan al hacer login/logout para que renderSessionHeader() lo use
   const token = localStorage.getItem('contextia_token');
   if (token) {
     fetch(`${API_BASE}/auth/me`, {
@@ -600,15 +681,20 @@ window.addEventListener('contextia:authchange', () => {
   }
 });
 
-// ——— Trigger modal bienvenida post-registro ———
-// auth.js despacha 'contextia:authchange' al registrarse. Si el usuario se
-// acaba de registrar (no tenía token antes), mostramos el modal.
+// ——— Trigger modal post-registro ———
 (function() {
   const hadToken = !!localStorage.getItem('contextia_token');
   window.addEventListener('contextia:authchange', function onFirstAuth() {
     const hasToken = !!localStorage.getItem('contextia_token');
     if (!hadToken && hasToken) {
-      setTimeout(() => window.showWelcomeProModal(), 500);
+      const pendingPlan = localStorage.getItem('contextia_pending_plan');
+      if (pendingPlan) {
+        setTimeout(() => {
+          if (window.openFakePaymentModal) window.openFakePaymentModal();
+        }, 400);
+      } else {
+        setTimeout(() => window.showWelcomeProModal(), 500);
+      }
     }
     window.removeEventListener('contextia:authchange', onFirstAuth);
   });

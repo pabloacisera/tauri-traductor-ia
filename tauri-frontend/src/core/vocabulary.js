@@ -1,11 +1,24 @@
 // [ADDED v3.0] Módulo de vocabulario — bookmark de palabras desde el modal de análisis
 const API_BASE = 'http://localhost:8000';
 
-function authHeaders() {
+async function getDeviceSeed() {
+  try {
+    const { getClientSeed } = await import('../utils/device.js');
+    return await getClientSeed();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('contextia_token');
   if (token) {
     h['Authorization'] = `Bearer ${token}`;
+  }
+  const seed = await getDeviceSeed();
+  if (seed) {
+    h['X-Device-Seed'] = seed;
   }
   return h;
 }
@@ -105,16 +118,6 @@ document.body.addEventListener('click', async (e) => {
   const btn = e.target.closest('.vocab-bookmark');
   if (!btn) return;
   e.preventDefault();
-
-  const token = localStorage.getItem('contextia_token');
-  if (!token) {
-    window.openAuthModal(() => {
-      // Reintentar guardado después de login
-      saveWord(btn);
-    }, 'Guardá palabras para practicarlas después');
-    return;
-  }
-
   await saveWord(btn);
 });
 
@@ -122,9 +125,10 @@ async function saveWord(btn) {
   if (btn.classList.contains('saved')) return;
 
   try {
+    const headers = await authHeaders();
     const res = await fetch(`${API_BASE}/vocabulary/save`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers,
       body: JSON.stringify({
         word: btn.dataset.word,
         definition: btn.dataset.definition || '',
@@ -136,10 +140,15 @@ async function saveWord(btn) {
     if (res.ok) {
       btn.classList.add('saved');
       btn.title = 'Guardado';
-      // [ADDED v3.0] Notificar que se guardó una palabra (para habilitar práctica)
       window.dispatchEvent(new CustomEvent('contextia:vocabularysaved'));
+      if (window.checkVisibility) {
+        window.checkVisibility();
+      }
+    } else if (res.status === 401) {
+      window.openAuthModal(() => {
+        saveWord(btn);
+      }, 'Guardá palabras para practicarlas después');
     }
   } catch (err) {
-    // Silencioso — no bloquear la UI
   }
 }

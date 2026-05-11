@@ -368,10 +368,12 @@
   transition: var(--transition-normal);
 }
 .practice-next-btn:hover { background: var(--accent-hover); }
-.practice-next-btn:disabled {
-  background: var(--bg-tertiary);
-  color: var(--text-muted);
-  cursor: not-allowed;
+/* Botón reintentar: color ámbar para diferenciar del botón de avance */
+.practice-retry-btn {
+  background: #b45309;
+}
+.practice-retry-btn:hover {
+  background: #92400e;
 }
 
 .level-change-animation .practice-level-badge {
@@ -680,7 +682,7 @@
 }
 
 /* ─── Contador anónimo ─── */
-.anon-counter {
+.anon-counter-slot {
   font-size: var(--size-tiny);
   color: var(--text-muted);
   padding: var(--space-1) var(--space-2);
@@ -688,7 +690,7 @@
   background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
 }
-.anon-counter-low {
+.anon-counter-slot.anon-counter-low {
   color: #f59e0b;
   border-color: rgba(245, 158, 11, 0.3);
   background: rgba(245, 158, 11, 0.05);
@@ -706,12 +708,16 @@
 
 /* ─── Fix 3: Simetría estética de columnas ─── */
 .translator-layout {
-    display: grid !important;
-    align-items: stretch !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
 }
 .input-column, .output-column {
-    display: flex;
-    flex-direction: column;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+}
+.button-column {
+    flex: 0 0 56px !important;
 }
 
 /* ─── Fix 4: Centrado del icono Play ─── */
@@ -724,4 +730,179 @@
 .speech-voice-icon svg {
     margin: 0 !important;
     display: block;
+}
+
+/* ─── Language Selector (ejercicios) ─── */
+.lang-selector-container {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  box-sizing: border-box;
+}
+.lang-selector-title {
+  font-size: var(--size-small);
+  color: var(--text-muted);
+  text-align: center;
+  font-family: var(--font-mono);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-color);
+}
+.lang-selector-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+.lang-select-btn {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  padding: 14px 20px;
+  font-family: var(--font-mono);
+  font-size: var(--size-small);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  transition: all var(--transition-fast);
+}
+.lang-select-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(16,185,129,0.05);
+}
+.lang-select-meta {
+  font-size: var(--size-tiny);
+  color: var(--text-muted);
+  font-weight: 400;
+  white-space: nowrap;
+}
+.lang-select-active {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  background: rgba(16,185,129,0.08) !important;
+}
+.lang-select-active .lang-select-meta {
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+.practice-lang-switcher {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.practice-lang-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.lang-switch-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: var(--size-tiny);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.lang-switch-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+.lang-switch-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.lang-switch-btn:hover .lang-switch-meta {
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+.lang-switch-active {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  background: rgba(16,185,129,0.1) !important;
+}
+.lang-switch-active .lang-switch-meta {
+  color: var(--accent-color);
+}
+
+#btn-close-practice,
+#btn-close-vocabulary {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 var(--space-1);
+  transition: color var(--transition-fast);
+}
+#btn-close-practice:hover,
+#btn-close-vocabulary:hover { color: var(--text-primary); }
+
+/* ─── Responsive Mobile-First: Header ─── */
+@media (max-width: 480px) {
+  #app-header {
+    padding: var(--space-2) var(--space-3);
+    gap: var(--space-2);
+  }
+  .header-logo {
+    font-size: 1rem;
+  }
+  .upgrade-pro-btn {
+    font-size: var(--size-tiny);
+    padding: var(--space-1) var(--space-2);
+  }
+}
+
+/* ─── Responsive Mobile-First: Auth Modal ─── */
+@media (max-width: 480px) {
+  .auth-modal {
+    width: 95%;
+    padding: var(--space-4);
+  }
+}
+
+/* ─── Responsive Mobile-First: Metrics Modal ─── */
+@media (max-width: 480px) {
+  .metrics-modal {
+    width: 98%;
+    padding: var(--space-4);
+  }
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Responsive Mobile-First: Bottom Tabs ─── */
+@media (max-width: 360px) {
+  .bottom-tab span:not(.tab-badge) {
+    display: none;
+  }
+  .bottom-tab {
+    font-size: 0;
+  }
+}
+
+/* ─── Responsive Mobile-First: Toast ─── */
+@media (max-width: 480px) {
+  .contextia-toast {
+    left: var(--space-4);
+    right: var(--space-4);
+    max-width: 100%;
+  }
 }

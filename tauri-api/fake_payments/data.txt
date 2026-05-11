@@ -1,0 +1,8 @@
+# Formato: cliente|email|password|marca|nro|mm|yy|cvv|resultado
+# resultado: success | decline | insufficient_funds | expired_card | invalid_cvv
+cliente1|test1@test.com|Test1234|Visa|4111111111111111|12|2028|123|success
+cliente2|test2@test.com|Test1234|Mastercard|5555555555554444|12|2028|456|success
+cliente3|test3@test.com|Test1234|Visa|4111111111111111|12|2025|123|expired_card
+cliente4|test4@test.com|Test1234|Visa|4111111111111111|12|2028|999|invalid_cvv
+cliente5|test5@test.com|Test1234|Visa|4000000000000002|12|2028|123|decline
+cliente6|test6@test.com|Test1234|Visa|4000000000000051|12|2028|123|insufficient_funds

@@ -1,10 +1,13 @@
 // [ADDED v8.0] Modal de métricas — estadísticas de aprendizaje con gráfico SVG puro
 const API_BASE = 'http://localhost:8000';
 
-function authHeaders() {
+async function authHeaders() {
   const h = { 'Content-Type': 'application/json' };
   const token = localStorage.getItem('contextia_token');
   if (token) h['Authorization'] = `Bearer ${token}`;
+  const { getClientSeed } = await import('../utils/device.js');
+  const seed = await getClientSeed();
+  if (seed) h['X-Device-Seed'] = seed;
   return h;
 }
 
@@ -31,7 +34,8 @@ window.openMetricsModal = async function() {
   overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
   try {
-    const res = await fetch(`${API_BASE}/metrics/summary`, { headers: authHeaders() });
+    const headers = await authHeaders();
+    const res = await fetch(`${API_BASE}/metrics/summary`, { headers });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Error cargando métricas');
     renderMetrics(overlay.querySelector('#metrics-content'), data);

@@ -15,18 +15,26 @@ router = APIRouter()
 def get_history(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=50),
+    q: str = Query(None, description="Filtro de búsqueda sobre original y traducción"),
     user: User = Depends(require_auth),
     db: Session = Depends(get_db)
 ):
-    """Historial paginado. Todos los usuarios registrados pueden ver su historial."""
+    """Historial paginado con búsqueda opcional. Todos los usuarios registrados pueden ver su historial."""
     offset = (page - 1) * per_page
-    total = db.query(TranslationHistory).filter(
-        TranslationHistory.user_id == user.id
-    ).count()
 
-    items = db.query(TranslationHistory).filter(
+    base_query = db.query(TranslationHistory).filter(
         TranslationHistory.user_id == user.id
-    ).order_by(TranslationHistory.created_at.desc()).offset(offset).limit(per_page).all()
+    )
+
+    if q and q.strip():
+        search = f"%{q.strip()}%"
+        base_query = base_query.filter(
+            (TranslationHistory.original_text.ilike(search)) |
+            (TranslationHistory.translated_text.ilike(search))
+        )
+
+    total = base_query.count()
+    items = base_query.order_by(TranslationHistory.created_at.desc()).offset(offset).limit(per_page).all()
 
     plan = get_user_plan(user, db)
 

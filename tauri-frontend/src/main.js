@@ -13,6 +13,8 @@ import './core/metrics.js';
 document.querySelector('#app').innerHTML = `
 <header id="app-header">
   <div class="header-logo">Context<span>IA</span></div>
+  <span id="anon-counter-slot"></span>
+  <span id="anon-exercises-counter-slot"></span>
   <div class="header-session" id="header-session">
     <!-- se rellena por JS después -->
   </div>
@@ -91,17 +93,27 @@ function renderSessionHeader() {
     if (upgradeBtn) upgradeBtn.onclick = () => window.openPricingModal();
   } else {
     container.innerHTML = `
+      <button class="upgrade-pro-btn" id="header-upgrade-btn">Únete a PRO</button>
       <button class="header-login-btn" id="header-login">Iniciar sesión</button>
     `;
     const loginBtn = document.getElementById('header-login');
     if (loginBtn) {
       loginBtn.onclick = () => window.openAuthModal(null, 'Accedé a tu cuenta');
     }
+    const upgradeBtn = document.getElementById('header-upgrade-btn');
+    if (upgradeBtn) {
+      upgradeBtn.onclick = () => window.openPricingModal();
+    }
   }
 }
 
 renderSessionHeader();
-window.addEventListener('contextia:authchange', renderSessionHeader);
+window.addEventListener('contextia:authchange', () => {
+  renderSessionHeader();
+  // Limpiar contadores anónimos al cambiar estado (especialmente al loguearse)
+  if (typeof window.updateAnonymousCounter === 'function') window.updateAnonymousCounter(0);
+  if (typeof window.updateAnonymousExercisesCounter === 'function') window.updateAnonymousExercisesCounter(0);
+});
 
 // [ADDED MVP-v1] Cargar módulos MVP dinámicamente para no romper el core si fallan
 (async function loadMvpModules() {
@@ -114,5 +126,44 @@ window.addEventListener('contextia:authchange', renderSessionHeader);
     await import('./core/account.js');
   } catch (e) {
     console.warn('[MVP] account.js no cargó:', e);
+  }
+  try {
+    await import('./core/fake_payment.js');
+  } catch (e) {
+    console.warn('[MVP] fake_payment.js no cargó:', e);
+  }
+})();
+
+// [ADDED] Conectar SSE para actualización en tiempo real de contadores
+(async function initUsageSSE() {
+  const token = localStorage.getItem('contextia_token');
+  if (token) return;
+
+  try {
+    const { getClientSeed } = await import('./utils/device.js');
+    const { connectUsageSSE, disconnectUsageSSE } = await import('./utils/sse-usage.js');
+
+    const seed = await getClientSeed();
+    if (!seed) return;
+
+    connectUsageSSE(seed, {
+      onUsageUpdate: (data) => {
+        if (typeof window.updateAnonymousCounter === 'function') {
+          window.updateAnonymousCounter(data.translations_remaining);
+        }
+        if (typeof window.updateAnonymousExercisesCounter === 'function') {
+          window.updateAnonymousExercisesCounter(data.exercises_remaining);
+        }
+      },
+      onLimitReached: (data) => {
+        if (data.type === 'translation' && typeof window.updateAnonymousCounter === 'function') {
+          window.updateAnonymousCounter(0);
+        }
+      }
+    });
+
+    window.addEventListener('beforeunload', disconnectUsageSSE);
+  } catch (e) {
+    console.warn('[SSE] No se pudo conectar:', e);
   }
 })();

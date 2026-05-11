@@ -20,6 +20,7 @@ historyStyles.innerHTML = `
     overflow-y: auto;
     border-left: 1px solid var(--border-color);
     padding: var(--space-6);
+    padding-bottom: calc(56px + var(--space-6));
     font-family: var(--font-mono);
     display: flex;
     flex-direction: column;
@@ -179,6 +180,39 @@ historyStyles.innerHTML = `
     margin: 40px auto;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  #history-items-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .history-search-input {
+    width: 100%;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: var(--space-2) var(--space-3);
+    font-family: var(--font-mono);
+    font-size: var(--size-xsmall);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--transition-fast);
+  }
+  .history-search-input:focus {
+    border-color: var(--accent-color);
+  }
+  .history-search-input::placeholder {
+    color: var(--text-muted);
+  }
+  .history-sentinel {
+    height: 1px;
+    width: 100%;
+  }
+  .history-loading-more {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-3) 0;
+  }
 `;
 document.head.appendChild(historyStyles);
 
@@ -190,6 +224,8 @@ function injectHistoryButton() {
 // ——— Panel principal de historial ———
 let currentPage = 1;
 let totalPages = 1;
+let currentQuery = '';
+let isLoading = false;
 
 async function openHistoryPanel() {
   const token = localStorage.getItem('contextia_token');
@@ -197,9 +233,9 @@ async function openHistoryPanel() {
     window.openAuthModal(null, 'Iniciá sesión para ver tu historial');
     return;
   }
-  
+
   if (document.getElementById('history-panel-overlay')) return;
-  
+
   const overlay = document.createElement('div');
   overlay.id = 'history-panel-overlay';
   overlay.className = 'history-panel-overlay';
@@ -209,18 +245,54 @@ async function openHistoryPanel() {
         <span class="history-panel-title">Historial</span>
         <button class="history-close-btn" id="history-close-btn">&times;</button>
       </div>
-      <div id="history-items-container">
-        <div class="history-spinner"></div>
-      </div>
+      <input
+        id="history-search-input"
+        class="history-search-input"
+        type="text"
+        placeholder="Buscar en todo el historial..."
+        autocomplete="off"
+      />
+      <div id="history-items-container"></div>
     </div>
   `;
   document.body.appendChild(overlay);
-  
+
   overlay.onclick = (e) => { if (e.target === overlay) closeHistoryPanel(); };
   document.getElementById('history-close-btn').onclick = closeHistoryPanel;
-  
+
+  // Scroll infinito: sentinel al final del panel (fuera del container de items)
+  const panel = document.getElementById('history-panel-inner');
+  const sentinel = document.createElement('div');
+  sentinel.className = 'history-sentinel';
+  sentinel.id = 'history-scroll-sentinel';
+  panel.appendChild(sentinel);
+
+  const scrollObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting && !isLoading && currentPage < totalPages) {
+      currentPage++;
+      loadHistoryPage(currentPage, currentQuery);
+    }
+  }, { root: panel, threshold: 0.1 });
+  scrollObserver.observe(sentinel);
+
+  // Buscador con debounce de 350ms — llama al backend con q=
+  let debounceTimer = null;
+  document.getElementById('history-search-input').addEventListener('input', (e) => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      currentQuery = e.target.value.trim();
+      currentPage = 1;
+      totalPages = 1;
+      const container = document.getElementById('history-items-container');
+      if (container) container.innerHTML = '<div class="history-spinner"></div>';
+      await loadHistoryPage(1, currentQuery);
+    }, 350);
+  });
+
+  // Carga inicial
   currentPage = 1;
-  await loadHistoryPage(1);
+  currentQuery = '';
+  await loadHistoryPage(1, '');
 }
 
 function closeHistoryPanel() {
@@ -228,51 +300,74 @@ function closeHistoryPanel() {
   if (overlay) overlay.remove();
 }
 
-async function loadHistoryPage(page) {
+async function loadHistoryPage(page, query = '') {
   const token = localStorage.getItem('contextia_token');
   const container = document.getElementById('history-items-container');
-  if (!container) return;
-  
+  if (!container || isLoading) return;
+
+  isLoading = true;
+
+  let loadingEl = null;
   if (page === 1) {
     container.innerHTML = '<div class="history-spinner"></div>';
+  } else {
+    loadingEl = document.createElement('div');
+    loadingEl.className = 'history-loading-more';
+    loadingEl.innerHTML = '<div class="history-spinner" style="margin:0"></div>';
+    container.appendChild(loadingEl);
   }
-  
+
   try {
-    const res = await fetch(`${API_BASE}/history?page=${page}&per_page=20`, {
+    const params = new URLSearchParams({ page, per_page: 20 });
+    if (query) params.set('q', query);
+
+    const res = await fetch(`${API_BASE}/history?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       }
     });
-    
+
     if (!res.ok) throw new Error('Error al cargar historial');
     const data = await res.json();
-    
+
     totalPages = data.pages || 1;
-    
+
     if (page === 1) {
       container.innerHTML = '';
     } else {
-      // Remover botón "cargar más" si existe
-      const oldBtn = document.getElementById('history-load-more-btn');
-      if (oldBtn) oldBtn.remove();
+      if (loadingEl) loadingEl.remove();
     }
-    
+
     if (data.items.length === 0 && page === 1) {
-      container.innerHTML = '<div class="history-empty">No hay traducciones guardadas aún.<br>Hacé una traducción para verla aquí.</div>';
+      const isFree = !data.plan || data.plan === 'free' || data.plan === 'anonymous';
+      if (isFree) {
+        container.innerHTML = `
+          <div class="history-empty">
+            El historial completo está disponible en el plan Pro.<br>
+            <span style="font-size:var(--size-tiny);color:var(--text-muted);margin-top:var(--space-2);display:block">
+              Actualizá tu plan para guardar y acceder a todas tus traducciones.
+            </span>
+          </div>`;
+      } else if (query) {
+        container.innerHTML = `<div class="history-empty">No se encontraron resultados para "<strong>${escapeHtml(query)}</strong>".</div>`;
+      } else {
+        container.innerHTML = '<div class="history-empty">No hay traducciones guardadas aún.<br>Hacé una traducción para verla aquí.</div>';
+      }
+      isLoading = false;
       return;
     }
-    
+
     data.items.forEach(item => {
       const el = document.createElement('div');
       el.className = 'history-item';
       el.dataset.id = item.id;
-      
+
       const date = new Date(item.created_at).toLocaleDateString('es-AR', {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
       });
-      
+
       el.innerHTML = `
         <div class="history-item-langs">${item.source_language} → ${item.target_language}</div>
         <div class="history-item-original">${escapeHtml(item.original_text)}</div>
@@ -283,25 +378,19 @@ async function loadHistoryPage(page) {
           ${item.has_audio ? '<span class="history-badge">Audio</span>' : ''}
         </div>
       `;
-      
+
       el.onclick = () => openHistoryDetail(item.id);
       container.appendChild(el);
     });
-    
-    if (page < totalPages) {
-      const loadMoreBtn = document.createElement('button');
-      loadMoreBtn.id = 'history-load-more-btn';
-      loadMoreBtn.className = 'history-load-more';
-      loadMoreBtn.textContent = 'Cargar más...';
-      loadMoreBtn.onclick = () => {
-        currentPage++;
-        loadHistoryPage(currentPage);
-      };
-      container.appendChild(loadMoreBtn);
-    }
-    
+
   } catch (err) {
-    container.innerHTML = `<div class="history-empty">Error al cargar el historial.<br>${err.message}</div>`;
+    if (page === 1) {
+      container.innerHTML = `<div class="history-empty">Error al cargar el historial.<br>${err.message}</div>`;
+    } else {
+      if (loadingEl) loadingEl.remove();
+    }
+  } finally {
+    isLoading = false;
   }
 }
 
